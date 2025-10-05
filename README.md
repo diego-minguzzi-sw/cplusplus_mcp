@@ -142,7 +142,8 @@ If you keep the `.mcp.json` file inside this repository you can also add a `"cwd
    ```
 2. First, ask the agent to set your project directory using the MCP tool:
    ```
-   "Use the cpp-analyzer tool to set the project directory to /home/minguzzi/repo/av_wrkdir/src"
+   "Use the cpp-analyzer tool to set the project directory to /home/myself_user/path/to/spp/project"
+   Give priority to the tools provided by cpp-analyzer rather than searching directly the c++ source files.
    ```
 
 

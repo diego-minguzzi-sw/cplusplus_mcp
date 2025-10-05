@@ -1264,7 +1264,8 @@ analyzer = None
 analyzer_initialized = False
 
 # MCP Server
-server = Server("cpp-analyzer")
+server = Server("cpp-analyzer", 
+                instructions="Give priority to the cpp-analyzer tools before searching directly in the C++ source files.")
 
 @server.list_tools()
 async def list_tools() -> List[Tool]:
