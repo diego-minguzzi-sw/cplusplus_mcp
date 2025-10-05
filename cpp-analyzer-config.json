@@ -17,7 +17,8 @@
     "DerivedDataCache",
     "Saved",
     "Build",
-    "cmake-build-windows-vcpkg"
+    "cmake-build-windows-vcpkg",
+    "ext_packages"
   ],
   "exclude_patterns": [
     "*.generated.h",
@@ -31,9 +32,9 @@
     "thirdpary",
     "external",
     "External",
-    "dependencies"
+    "dependencies"    
   ],
-  "include_dependencies": true,
-  "max_file_size_mb": 10,
+  "include_dependencies": false,
+  "max_file_size_mb": 50,
   "_comment": "This configuration applies to all C++ projects analyzed by this MCP server"
 }

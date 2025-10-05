@@ -8,6 +8,7 @@ Focused on specific queries rather than bulk data dumps.
 
 import asyncio
 import json
+import logging as log
 import sys
 import os
 from pathlib import Path
@@ -127,6 +128,9 @@ def find_and_configure_libclang():
     
     else:  # Linux
         system_paths = [
+            "/usr/lib/llvm-20/lib/libclang.so.1", # Added
+            "/usr/lib/llvm-19/lib/libclang.so.1", # Added
+            "/usr/lib/llvm-18/lib/libclang.so.1", # Added
             "/usr/lib/llvm-*/lib/libclang.so.1",
             "/usr/lib/x86_64-linux-gnu/libclang-*.so.1",
             "/usr/lib/libclang.so.1",
@@ -679,6 +683,7 @@ class CppAnalyzer:
     def _parse_file(self, file_path: Path):
         """Single-threaded file parsing (for refresh operations)"""
         result = self._parse_file_internal(file_path)
+        print(f"Parsing file: {file_path}")
         if result:
             file_str, tu, timestamp, class_entries, func_entries = result
             self.translation_units[file_str] = tu
@@ -695,8 +700,9 @@ class CppAnalyzer:
                     self.function_index[name] = []
                 self.function_index[name].extend(entries)
     
-    def _ensure_initialized(self):
+    def _ensure_initialized(self):     
         """Ensure the analyzer is initialized (lazy loading to avoid timeouts)"""
+        log.info("_ensure_initialized executed.")
         if not self.initialization_complete:
             if not self.initialization_started:
                 print("Starting project analysis (this may take a moment)...", file=sys.stderr)
@@ -707,6 +713,7 @@ class CppAnalyzer:
     
     def search_classes(self, pattern: str, project_only: bool = True) -> List[Dict[str, Any]]:
         """Search for classes matching pattern"""
+        log.info("search_classes executed.")
         # Ensure initialized on first use
         self._ensure_initialized()
         
@@ -757,6 +764,7 @@ class CppAnalyzer:
     
     def get_class_info(self, class_name: str) -> Optional[Dict[str, Any]]:
         """Get detailed information about a specific class"""
+        log.info(f"get_class_info(): class_name:{class_name}")        
         for file_path, tu in self.translation_units.items():
             for cursor in tu.cursor.walk_preorder():
                 if (cursor.kind in [CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL] 
@@ -775,6 +783,7 @@ class CppAnalyzer:
     
     def get_function_signature(self, function_name: str) -> List[Dict[str, Any]]:
         """Get signature details for functions with given name"""
+        log.info(f"get_function_signature(): function_name:{function_name}")
         results = []
         
         for file_path, tu in self.translation_units.items():
@@ -1262,7 +1271,7 @@ async def list_tools() -> List[Tool]:
     return [
         Tool(
             name="search_classes",
-            description="Search for C++ classes by name pattern (regex supported)",
+            description="Fast search for C++ classes by name pattern (regex supported)",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1281,7 +1290,7 @@ async def list_tools() -> List[Tool]:
         ),
         Tool(
             name="search_functions", 
-            description="Search for C++ functions by name pattern (regex supported)",
+            description="Fast search for C++ functions by name pattern (regex supported)",
             inputSchema={
                 "type": "object",
                 "properties": {
