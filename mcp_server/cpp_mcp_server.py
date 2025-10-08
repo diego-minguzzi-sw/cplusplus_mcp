@@ -8,7 +8,6 @@ Focused on specific queries rather than bulk data dumps.
 
 import asyncio
 import json
-import logging as log
 import sys
 import os
 from pathlib import Path
@@ -34,6 +33,34 @@ from mcp.types import (
     Tool,
     TextContent,
 )
+
+
+import glob
+import re
+import os
+import os.path
+
+
+def _find_latest_linux_libclang( glob_search_path= "/usr/lib/llvm-*/"):
+    """ Returns the path of the latest installed libclang in Linux. 
+        Thaat is, the one with the highest version number.
+        Returns None in case nothing was found. """
+    pattern = os.path.join(glob_search_path,"libclang-*.so.1")
+    candidates = glob.glob(pattern)
+
+    newest_version = -1
+    path_newest_lib = None
+
+    for path in candidates:
+        match = re.search(r"libclang-(\d+)\.so\.1$", os.path.basename(path))
+        if match:
+            version = int(match.group(1))
+            if version > newest_version:
+                newest_version = version
+                path_newest_lib = path
+
+    return path_newest_lib
+
 
 def find_and_configure_libclang():
     """Find and configure libclang library"""
@@ -126,16 +153,18 @@ def find_and_configure_libclang():
             "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/libclang.dylib",
         ]
     
-    else:  # Linux
+    else:  # Linux                    
         system_paths = [
-            "/usr/lib/llvm-20/lib/libclang.so.1", # Added
-            "/usr/lib/llvm-19/lib/libclang.so.1", # Added
-            "/usr/lib/llvm-18/lib/libclang.so.1", # Added
             "/usr/lib/llvm-*/lib/libclang.so.1",
             "/usr/lib/x86_64-linux-gnu/libclang-*.so.1",
             "/usr/lib/libclang.so.1",
             "/usr/lib/libclang.so",
         ]
+
+        # Inserts the path of the latest version of libclang in first position.
+        path_latest_lib= _find_latest_linux_libclang( "/usr/lib/llvm-*/lib/")
+        if path_latest_lib is not None:
+            system_paths.insert(0, path_latest_lib)
     
     # Try each system path
     for path_pattern in system_paths:
@@ -683,7 +712,6 @@ class CppAnalyzer:
     def _parse_file(self, file_path: Path):
         """Single-threaded file parsing (for refresh operations)"""
         result = self._parse_file_internal(file_path)
-        print(f"Parsing file: {file_path}")
         if result:
             file_str, tu, timestamp, class_entries, func_entries = result
             self.translation_units[file_str] = tu
@@ -702,7 +730,6 @@ class CppAnalyzer:
     
     def _ensure_initialized(self):     
         """Ensure the analyzer is initialized (lazy loading to avoid timeouts)"""
-        log.info("_ensure_initialized executed.")
         if not self.initialization_complete:
             if not self.initialization_started:
                 print("Starting project analysis (this may take a moment)...", file=sys.stderr)
@@ -713,7 +740,6 @@ class CppAnalyzer:
     
     def search_classes(self, pattern: str, project_only: bool = True) -> List[Dict[str, Any]]:
         """Search for classes matching pattern"""
-        log.info("search_classes executed.")
         # Ensure initialized on first use
         self._ensure_initialized()
         
@@ -763,8 +789,7 @@ class CppAnalyzer:
         return results
     
     def get_class_info(self, class_name: str) -> Optional[Dict[str, Any]]:
-        """Get detailed information about a specific class"""
-        log.info(f"get_class_info(): class_name:{class_name}")        
+        """Get detailed information about a specific class"""        
         for file_path, tu in self.translation_units.items():
             for cursor in tu.cursor.walk_preorder():
                 if (cursor.kind in [CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL] 
@@ -783,7 +808,6 @@ class CppAnalyzer:
     
     def get_function_signature(self, function_name: str) -> List[Dict[str, Any]]:
         """Get signature details for functions with given name"""
-        log.info(f"get_function_signature(): function_name:{function_name}")
         results = []
         
         for file_path, tu in self.translation_units.items():
@@ -1272,7 +1296,7 @@ async def list_tools() -> List[Tool]:
     return [
         Tool(
             name="search_classes",
-            description="Fast search for C++ classes by name pattern (regex supported)",
+            description="Search for C++ classes by name pattern (regex supported)",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -1291,7 +1315,7 @@ async def list_tools() -> List[Tool]:
         ),
         Tool(
             name="search_functions", 
-            description="Fast search for C++ functions by name pattern (regex supported)",
+            description="Search for C++ functions by name pattern (regex supported)",
             inputSchema={
                 "type": "object",
                 "properties": {
